@@ -103,4 +103,23 @@ body {
   margin: 0 auto;
   background-color: #1e272e;
   position: relative;
+  overflow: hidden;
+}
+
+.obstacle-content {
+  height: 100%;
+  width: 100%;
+  position: relative;
+}
+
+.top-obstacle {
+  position: absolute;
+  top: 0;
+  width: 100%;
+}
+
+.bot-obstacle {
+  position: absolute;
+  bottom: 0;
+  width: 100%;
 }
