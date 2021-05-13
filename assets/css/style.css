@@ -71,7 +71,7 @@ body {
 }
 
 .cover-img {
-  max-height: 40rem;
+  max-height: 30rem;
 }
 
 .card-btn {
@@ -95,21 +95,12 @@ body {
   font-weight: 'bold';
 }
 
-#road-area {
+.absolute {
+  position: absolute;
+}
+
+#game-area {
   margin: 0 auto;
   background-color: #1e272e;
   position: relative;
-}
-
-.road-line {
-  position: absolute;
-  top: 0;
-  left: 50%;
-  background-color: white;
-  width: 1rem;
-  height: 8rem;
-}
-
-.absolute {
-  position: absolute;
 }
