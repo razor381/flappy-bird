@@ -177,7 +177,7 @@ class Player extends Base {
     }
 
     this.dy += this.isAtJumpTop ? 0
-      : this.isJumping ? JUMP_GRAVITY_INCREMENT : GRAVITY_INCREMENT
+      : this.isJumping ? JUMP_GRAVITY_INCREMENT : GRAVITY_INCREMENT;
 
     this.moveY();
   }
@@ -398,12 +398,12 @@ gameArea.style.height = addPx(MAX_HEIGHT);
 
 let playerImgs, topObstacleImg, botObstacleImg;
 
-
+function loadAssets() {
+  return [loadImage(TOP_OBSTACLE_IMG), loadImage(BOT_OBSTACLE_IMG), ...loadPlayerSprites()];
+}
 
 (async function () {
-  topObstacleImg = await loadImage(TOP_OBSTACLE_IMG);
-  botObstacleImg = await loadImage(BOT_OBSTACLE_IMG);
-  playerImgs = await Promise.all(loadPlayerSprites());
+  [topObstacleImg, botObstacleImg, ...playerImgs] = await Promise.all(loadAssets());
 
   topObstacleImg.classList.add(CLASS_OBSTACLE_PART, CLASS_TOP_OBSTACLE);
   botObstacleImg.classList.add(CLASS_OBSTACLE_PART, CLASS_BOT_OBSTACLE);
