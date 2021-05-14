@@ -29,7 +29,7 @@ const PLAYER_INITIAL_Y = (MAX_HEIGHT / 2) - PLAYER_HEIGHT;
 const OBSTACLE_WIDTH = 130;
 const OBSTACLES_X_OFFSET = 450;
 const OBSTACLES_QTY = 2;
-const OBSTACLE_GAP_HEIGHT = PLAYER_HEIGHT * 5.5;
+const OBSTACLE_GAP_HEIGHT = PLAYER_HEIGHT * 6;
 const GAP_Y_INDEX = 1 / 6;
 const MIN_GAP_Y = MAX_HEIGHT * GAP_Y_INDEX;
 const MAX_GAP_Y = MAX_HEIGHT * (1 - GAP_Y_INDEX) - OBSTACLE_GAP_HEIGHT;
@@ -56,7 +56,7 @@ const restartBtn = getEl('#restart-btn');
 
 const currentScoreEl = getEl('.current-score');
 const finalScoreEl = getEl('.final-score');
-const bestScoreEls = getEl('.best-score', true);
+const bestScoreEl = getEl('.best-score');
 const newBestEl = getEl('.new-best');
 
 
@@ -249,22 +249,16 @@ class Obstacle extends Base {
 
 class Game {
   constructor() {
-    this.initialize();
+    reset();
     this.player = new Player();
     this.obstacles = this.generateObstacles();
     this.animateMotion();
     this.isDead = false;
-    this.prevBestScore = 0;
+    this.prevBestScore = this.getPrevBestScore();
   }
 
-  initialize() {
-    this.prevBestScore = localStorage.getItem(BEST_SCORE_KEY) || 0;
-    this.updateBestScoreElements();
-    reset();
-  }
-
-  updateBestScoreElements() {
-    bestScoreEls.forEach((el) => el.innerText = this.prevBestScore);
+  getPrevBestScore() {
+    return +localStorage.getItem(BEST_SCORE_KEY) || 0;
   }
 
   generateObstacles() {
@@ -280,15 +274,15 @@ class Game {
   updateBestScore() {
     if (this.player.score <= this.prevBestScore) return;
 
-    localStorage.setItem(BEST_SCORE_KEY, this.player.score);
     this.prevBestScore = this.player.score;
+    localStorage.setItem(BEST_SCORE_KEY, this.player.score);
     newBestEl.classList.remove(CLASS_HIDDEN);
-    this.updateBestScoreElements();
   }
 
   handleGameOver() {
     finalScoreEl.innerText = this.player.score;
     this.updateBestScore()
+    bestScoreEl.innerText = this.prevBestScore;
     endCard.classList.remove(CLASS_HIDDEN);
   }
 
@@ -389,7 +383,7 @@ function loadPlayerSprites() {
 }
 
 function init() {
-  const game = new Game();
+  new Game();
 }
 
 
