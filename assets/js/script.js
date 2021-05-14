@@ -1,5 +1,4 @@
 const DIV_TAG = 'div';
-const IMG_TAG = 'img';
 const CLASS_ABSOLUTE = 'absolute';
 const CLASS_HIDDEN = 'hidden';
 const CLASS_OBSTACLE = 'obstacle';
@@ -11,13 +10,11 @@ const CLASS_BOT_OBSTACLE = 'bot-obstacle';
 const MAX_WIDTH = 768;
 const MAX_HEIGHT = 1024;
 
-const ARROW_UP = 'ArrowUp';
-const ARROW_DOWN = 'ArrowDown';
 const BEST_SCORE_KEY = '@BEST_SCORE_KEY';
 
 const PLAYER_IMG = '/assets/img/bird';
-const PLAYER_SPRITES_NUM = 9;
 const PNG_EXT = '.png';
+const PLAYER_SPRITES_NUM = 9;
 const TOP_OBSTACLE_IMG = '/assets/img/pipe-top.png';
 const BOT_OBSTACLE_IMG = '/assets/img/pipe-bot.png';
 
@@ -25,17 +22,19 @@ const PLAYER_WIDTH = 85;
 const PLAYER_HEIGHT = 60;
 const PLAYER_X = MAX_WIDTH / 2;
 const PLAYER_INITIAL_Y = (MAX_HEIGHT / 2) - PLAYER_HEIGHT;
+const INITIAL_TILT_ANGLE = -45;
+const TILT_DEGRADATION = 15;
 
 const OBSTACLE_WIDTH = 130;
 const OBSTACLES_X_OFFSET = 450;
 const OBSTACLES_QTY = 2;
 const OBSTACLE_GAP_HEIGHT = PLAYER_HEIGHT * 6;
-const GAP_Y_INDEX = 1 / 6;
+const GAP_Y_INDEX = 1 / 6;  // bigger ratio value makes gap generate at center
 const MIN_GAP_Y = MAX_HEIGHT * GAP_Y_INDEX;
 const MAX_GAP_Y = MAX_HEIGHT * (1 - GAP_Y_INDEX) - OBSTACLE_GAP_HEIGHT;
 
 const PLAYER_ANIMATE_SPEED = 5; // lower value results in faster flapping of wings
-const GAME_SPEED_DX = -4; // higher negative val makes obstacles move faster
+const GAME_SPEED_DX = -4.5; // higher negative val makes obstacles move faster
 const DEFAULT_DY = 0.03;  // default fall rate
 const GRAVITY_INCREMENT = 1;  // default fall acceleration
 const JUMP_GRAVITY_INCREMENT = 8;  // negative acceleration during fall
@@ -123,6 +122,7 @@ class Player extends Base {
     this.atJumpTopFrame = 0;
     this.isAtJumpTop = false;
     this.score = 0;
+    this.tiltAngle = INITIAL_TILT_ANGLE;
     this.addMovementListeners();
   }
 
@@ -131,6 +131,7 @@ class Player extends Base {
   }
 
   jump() {
+    this.tiltAngle = INITIAL_TILT_ANGLE;
     this.isJumping = true;
     this.isAtJumpTop = false;
     this.dy = JUMP_DY;
@@ -155,6 +156,8 @@ class Player extends Base {
 
       parentEl.removeChild(this.el);
       this.el = this.imageEls[(++this.spriteIndex) % spritesNum];
+      this.tiltAngle += TILT_DEGRADATION;
+      this.el.style.transform = `rotate(${this.tiltAngle}deg)`
       this.updateStyles();
       parentEl.appendChild(this.el);
     }
