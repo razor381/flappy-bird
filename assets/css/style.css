@@ -65,17 +65,21 @@ body {
   min-width: 30rem;
 }
 
+.welcome-card__sub-header {
+  margin-bottom: 3rem;
+}
+
 .card-contents p {
   color: #4b4b4b;
   margin-bottom: 1rem;
 }
 
 .cover-img {
-  max-height: 40rem;
+  max-height: 30rem;
 }
 
 .card-btn {
-  margin-top: 1rem;
+  margin-top: 2rem;
 }
 
 .center-card {
@@ -95,21 +99,49 @@ body {
   font-weight: 'bold';
 }
 
-#road-area {
-  margin: 0 auto;
-  background-color: #1e272e;
-  position: relative;
-}
-
-.road-line {
+.live-score {
   position: absolute;
-  top: 0;
+  z-index: 30;
+  top: 20%;
   left: 50%;
-  background-color: white;
-  width: 1rem;
-  height: 8rem;
+  font-size: 7em;
+  color: white;
+  font-weight: bold;
+  text-shadow: -2px -2px 0 #000, 2px -2px 0 #000, -2px 2px 0 #000, 2px 2px 0 #000;
 }
 
 .absolute {
   position: absolute;
+}
+
+#game-area {
+  margin: 0 auto;
+  background-color: #1e272e;
+  position: relative;
+  overflow: hidden;
+  background-image: url('/assets/img/background.png');
+  background-size: auto 100%;
+}
+
+.obstacle-content {
+  height: 100%;
+  width: 100%;
+  position: relative;
+}
+
+.obstacle-part {
+  position: absolute;
+  width: 100%;
+  object-fit: cover;
+  pointer-events: none;
+}
+
+.top-obstacle {
+  top: 0;
+  object-position: bottom;
+}
+
+.bot-obstacle {
+  bottom: 0;
+  object-position: top;
 }

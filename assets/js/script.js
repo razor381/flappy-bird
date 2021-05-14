@@ -1,39 +1,50 @@
-const ENEMY_QTY = 3;
+const DIV_TAG = 'div';
+const CLASS_ABSOLUTE = 'absolute';
+const CLASS_HIDDEN = 'hidden';
+const CLASS_OBSTACLE = 'obstacle';
+const CLASS_OBSTACLE_CONTENT = 'obstacle-content';
+const CLASS_OBSTACLE_PART = 'obstacle-part';
+const CLASS_TOP_OBSTACLE = 'top-obstacle';
+const CLASS_BOT_OBSTACLE = 'bot-obstacle';
 
-const BULLET_WIDTH = 40;
-const BULLET_HEIGHT = 50;
-const BULLET_SPEED = 30;
+const MAX_WIDTH = 768;
+const MAX_HEIGHT = 1024;
 
-const VEHICLE_WIDTH = 130;
-const VEHICLE_HEIGHT = 160;
-const MIN_ENEMY_CLEARANCE = VEHICLE_HEIGHT * 3;
+const BEST_SCORE_KEY = '@BEST_SCORE_KEY';
 
-const ROAD_LINE_WIDTH = 10;
-const ROAD_LINE_COLOR = 'rgba(255, 255, 255, 0.7)';
-const TRANSPARENT_COLOR = 'rgba(0, 0, 0, 0)';
-const ROAD_LINES_QTY = 5;
-const LANES_QTY = 3;
+const PLAYER_IMG = '/assets/img/bird';
+const PNG_EXT = '.png';
+const PLAYER_SPRITES_NUM = 9;
+const TOP_OBSTACLE_IMG = '/assets/img/pipe-top.png';
+const BOT_OBSTACLE_IMG = '/assets/img/pipe-bot.png';
 
-const MAX_WIDTH = window.innerWidth / 3;
-const MAX_HEIGHT = window.innerHeight;
+const PLAYER_WIDTH = 85;
+const PLAYER_HEIGHT = 60;
+const PLAYER_X = MAX_WIDTH / 2;
+const PLAYER_INITIAL_Y = (MAX_HEIGHT / 2) - PLAYER_HEIGHT;
+const INITIAL_TILT_ANGLE = -45;
+const TILT_DEGRADATION = 15;
 
-const ARROW_LEFT = 'ArrowLeft';
-const ARROW_RIGHT = 'ArrowRight';
-const ARROW_UP = 'ArrowUp'  ;
+const OBSTACLE_WIDTH = 130;
+const OBSTACLES_X_OFFSET = 450;
+const OBSTACLES_QTY = 2;
+const OBSTACLE_GAP_HEIGHT = PLAYER_HEIGHT * 6;
+const GAP_Y_INDEX = 1 / 6;  // bigger ratio value makes gap generate at center
+const MIN_GAP_Y = MAX_HEIGHT * GAP_Y_INDEX;
+const MAX_GAP_Y = MAX_HEIGHT * (1 - GAP_Y_INDEX) - OBSTACLE_GAP_HEIGHT;
 
-const BEST_SCORE_KEY = '@BEST_SCORE';
-
-const PLAYER_IMG = '../assets/img/player.png';
-const ENEMY_IMG = '../assets/img/enemy.png';
-const BULLET_IMG = '../assets/img/bullet.png';
-
-const ENEMY_SPEED = 5;
-const SPEED_UPDATE_DISTANCE = 2000;
+const PLAYER_ANIMATE_SPEED = 5; // lower value results in faster flapping of wings
+const GAME_SPEED_DX = -4.5; // higher negative val makes obstacles move faster
+const DEFAULT_DY = 0.03;  // default fall rate
+const GRAVITY_INCREMENT = 1;  // default fall acceleration
+const JUMP_GRAVITY_INCREMENT = 8;  // negative acceleration during fall
+const JUMP_DY = -60;  // fall rate during jump
+const JUMP_STOP_FRAMES = 10;  // higher value increases hold time at top of jump
 
 
 // DOM ELEMENTS
 
-const roadArea = getEl('#road-area');
+const gameArea = getEl('#game-area');
 
 const startCard = getEl('#start-card');
 const endCard = getEl('#end-card');
@@ -44,275 +55,288 @@ const restartBtn = getEl('#restart-btn');
 
 const currentScoreEl = getEl('.current-score');
 const finalScoreEl = getEl('.final-score');
-const bestScoreEls = getEl('.best-score', true);
+const bestScoreEl = getEl('.best-score');
 const newBestEl = getEl('.new-best');
-const passScoreEl = getEl('.pass-score');
-const finalPassScoreEl = getEl('.final-pass-score');
-
-
-// tag names and classes
-
-const DIV_TAG = 'div';
-const IMG_TAG = 'img';
-const CLASS_ABSOLUTE = 'absolute';
-const CLASS_ROAD_LINE = 'road-line';
-const CLASS_HIDDEN = 'hidden';
 
 
 // ------------------------- classes ---------------------------
 
 
-class BaseObject {
-  constructor(x, y, width, height, dx, dy, color, el, isRandomReset) {
+class Base {
+  constructor({ x, y, width, height, dx, dy, el }) {
     this.x = x;
     this.y = y;
     this.width = width;
     this.height = height;
     this.dx = dx;
     this.dy = dy;
-    this.color = color || TRANSPARENT_COLOR;
     this.el = el;
-    this.isRandomReset = isRandomReset;
 
     this.updateStyles();
-    renderElementIntoDom(this.el, roadArea);
+    this.renderEl();
   }
 
   updateStyles() {
-    /**
-     *
-     * @TODO - find alternative to assign all style props at once
-     *       - method inefficient as DOM style is updated at every single line
-     *
-     * */
     this.el.style.width = addPx(this.width);
     this.el.style.height = addPx(this.height);
+    this.el.style.position = CLASS_ABSOLUTE;
     this.el.style.top = addPx(this.y);
     this.el.style.left = addPx(this.x);
-    this.el.style.backgroundColor = this.color;
   }
 
-  updateSpeed(newSpeed) {
-    this.dy = newSpeed;
+  renderEl() {
+    renderElementIntoDom(this.el, gameArea);
   }
 
-  moveY () {
+  moveX() {
+    this.x += this.dx;
+    this.updateStyles();
+  }
+
+  moveY() {
     this.y += this.dy;
     this.updateStyles();
   }
 
-  restartToTop() {
-    this.y = this.isRandomReset ?
-      -getRandomInteger(MIN_ENEMY_CLEARANCE, MAX_HEIGHT)
-      :  -this.height;
-    this.updateStyles();
+  resetToRight() {
+    this.x = MAX_WIDTH;
   }
 }
 
-
-class RoadLine extends BaseObject {
-  constructor(initialVerticalPosition, lineHeight) {
-    const el = createNewElement(DIV_TAG, [CLASS_ROAD_LINE]);
-    super(
-      (MAX_WIDTH / 2) - (ROAD_LINE_WIDTH / 2),
-      initialVerticalPosition,
-      ROAD_LINE_WIDTH,
-      lineHeight,
-      0,                    // road lane does not move horizontally
-      PLAYER_SPEED,         // road line speed determined by player speed
-      ROAD_LINE_COLOR,
-      el,
-      false,
-    );
-  }
-}
-
-
-class Vehicle extends BaseObject {
-  constructor(y, dy, lane, isEnemy, isRandomReset, el) {
-    const x = convertLaneToPixel(lane);
-
-    el.classList.add(CLASS_ABSOLUTE);
-
-    super(x, y, VEHICLE_WIDTH, VEHICLE_HEIGHT, 0, dy, null, el, isRandomReset);
-    this.lane = lane;
-  }
-
-  changeLane(toLane) {
-    this.lane = toLane;
-    this.x = convertLaneToPixel(toLane);
-    this.el.style.left = addPx(this.x);
-  }
-}
-
-class Bullet extends BaseObject {
-  constructor(player) {
-    bulletImg.classList.add(CLASS_ABSOLUTE);
-
-    super(
-      player.x  + (player.width / 2) - (BULLET_WIDTH / 2),
-      player.y,
-      BULLET_WIDTH,
-      BULLET_HEIGHT,
-      0,
-      BULLET_SPEED,
-      null,
-      bulletImg,
-      false,
-    );
-  }
-}
-
-class Player extends Vehicle {
+class Player extends Base {
   constructor() {
-    super(
-      MAX_HEIGHT - VEHICLE_HEIGHT,
-      0, // player does not move vertically
-      0, //player starts at left-most lane
-      false,
-      false,
-      playerImg,
-    );
+    super({
+      x: PLAYER_X,
+      y: PLAYER_INITIAL_Y,
+      width: PLAYER_WIDTH,
+      height: PLAYER_HEIGHT,
+      dx: 0,
+      dy: DEFAULT_DY,
+      el: playerImgs[0],
+    });
 
-    this.passedValue = 0;
-    this.distanceTravelled = 0;
+    this.isJumping = false;
+    this.imageEls = playerImgs;
+    this.spriteIndex = 0;
+    this.spriteChangeRecorder = 0;
+    this.atJumpTopFrame = 0;
+    this.isAtJumpTop = false;
+    this.score = 0;
+    this.tiltAngle = INITIAL_TILT_ANGLE;
     this.addMovementListeners();
-    this.hasAmmo = true;
-    this.speedUpdatedAt = 0;
-}
-
-  addMovementListeners() {
-    document.onkeydown = (e) => {
-      e = e || window.event;
-
-      switch(e.key) {
-        case ARROW_LEFT:
-          this.handleMoveLeft();
-          break;
-        case ARROW_RIGHT:
-          this.handleMoveRight();
-          break;
-        case ARROW_UP:
-          this.shoot();
-          break;
-        default:
-      }
-    }
-  }
-
-  handleMoveLeft() {
-    if (this.lane > 0) this.changeLane(this.lane - 1);
-  }
-
-  handleMoveRight() {
-    if (this.lane < LANES_QTY - 1) this.changeLane(this.lane + 1);
   }
 
   updateScores() {
-    this.distanceTravelled += PLAYER_SPEED;
-    currentScoreEl.innerText = this.distanceTravelled;
-    passScoreEl.innerText = this.passedValue;
+    currentScoreEl.innerText = this.score;
   }
 
-  shoot() {
-    const bullet = new Bullet(this);
+  jump() {
+    this.tiltAngle = INITIAL_TILT_ANGLE;
+    this.isJumping = true;
+    this.isAtJumpTop = false;
+    this.dy = JUMP_DY;
   }
 
-  increaseSpeed() {
-    // update speed at every update checkpoint
-    if (Math.abs(this.distanceTravelled - this.speedUpdatedAt) > SPEED_UPDATE_DISTANCE) {
-      this.speedUpdatedAt = this.distanceTravelled;
-      PLAYER_SPEED += 1;
+  addMovementListeners() {
+    document.onmousedown = (e) => this.jump();
+
+  }
+
+  hasVerticallyCollided() {
+    if (this.y + this.height >= MAX_HEIGHT) return true;
+    if (this.y <= 0) this.dy = DEFAULT_DY;
+
+    return false;
+  }
+
+  changeSprite() {
+    if (++this.spriteChangeRecorder % PLAYER_ANIMATE_SPEED === 0) {
+      const spritesNum = this.imageEls.length;
+      const parentEl = this.el.parentNode;
+
+      parentEl.removeChild(this.el);
+      this.el = this.imageEls[(++this.spriteIndex) % spritesNum];
+      this.tiltAngle += TILT_DEGRADATION;
+      this.el.style.transform = `rotate(${this.tiltAngle}deg)`
+      this.updateStyles();
+      parentEl.appendChild(this.el);
     }
   }
 
-  incresePassedValue() {
-    ++this.passedValue;
+  handleVerticalMovement() {
+    // top most point of jump reached
+    if (this.isJumping && this.dy >= 0) {
+      this.isAtJumpTop = true;
+    }
+
+    // hold position at top-most point of jump for a while
+    if (this.isAtJumpTop && (++this.atJumpTopFrame % JUMP_STOP_FRAMES == 0)) {
+      this.atJumpTopFrame = 0;
+      this.isAtJumpTop = false;
+      this.isJumping = false;
+    }
+
+    this.dy += this.isAtJumpTop ? 0
+      : this.isJumping ? JUMP_GRAVITY_INCREMENT : GRAVITY_INCREMENT
+
+    this.moveY();
   }
 }
 
+class Obstacle extends Base {
+  constructor(xOffset) {
+    const { parentEl, topObstacleEl, botObstacleEl } = getObstacleElement();
 
-class Enemy extends Vehicle {
-  constructor(lane, image) {
-    super(
-      -getRandomInteger(VEHICLE_HEIGHT, MAX_HEIGHT) - lane * MAX_HEIGHT,
-      ENEMY_SPEED,
-      lane,
-      true,
-      true,
-      image,
-    );
+    super({
+      x: MAX_WIDTH + xOffset,
+      y: 0,
+      width: OBSTACLE_WIDTH,
+      height: MAX_HEIGHT,
+      dx: GAME_SPEED_DX,
+      dy: 0,
+      el: parentEl,
+    });
+
+    this.gapHeight = OBSTACLE_GAP_HEIGHT;
+    this.gapY = this.getRandomGapY();
+    this.topObstacleEl = topObstacleEl;
+    this.botObstacleEl = botObstacleEl;
+    this.hasPassedPlayer = false;
+
+    this.generateNewGapY();
+  }
+
+  createGap() {
+    this.topObstacleEl.style.height = addPx(this.gapY);
+    this.botObstacleEl.style.height = addPx(MAX_HEIGHT - this.gapY - this.gapHeight);
+  }
+
+  getRandomGapY() {
+    return getRandomInteger(MIN_GAP_Y, MAX_GAP_Y);
+  }
+
+  generateNewGapY() {
+    this.hasPassedPlayer = false;
+    this.gapY = this.getRandomGapY();
+    this.createGap();
+  }
+
+  checkOutOfScreen() {
+    if (this.x + this.width < 0) {
+      this.generateNewGapY();
+      this.resetToRight();
+    }
+  }
+
+  hasHitPlayer(player) {
+    const playerRightWall = player.x + player.width,
+          playerBottomWall = player.y + player.height;
+
+    if (player.x > this.x + this.width) {
+      player.score++;
+      this.hasPassedPlayer = true;
+      return false;
+    }
+
+    if ((playerRightWall >= this.x) && (player.x <= (this.x + this.width))) {
+      if (player.y <= this.gapY) return true;
+      if (playerBottomWall >= (this.gapY + this.gapHeight)) return true;
+
+      return false;
+    }
+
+    return false;
   }
 }
 
 
 class Game {
   constructor() {
-    this.initialize();
-    this.roadLines = generateRoadLines();
-    this.player = new Player();
-    this.enemies = generateEnemies();
-    this.animateMotion();
-  }
-
-  initialize() {
-    this.prevBestScore = localStorage.getItem(BEST_SCORE_KEY) || 0;
-    this.updateBestScoreElements();
     reset();
+    this.player = new Player();
+    this.obstacles = this.generateObstacles();
+    this.animateMotion();
+    this.isDead = false;
+    this.prevBestScore = this.getPrevBestScore();
   }
 
-  updateBestScoreElements() {
-    bestScoreEls.forEach((el) => el.innerText = this.prevBestScore);
+  getPrevBestScore() {
+    return +localStorage.getItem(BEST_SCORE_KEY) || 0;
   }
 
-  handleGameOver() {
-    finalScoreEl.innerText = this.player.distanceTravelled;
-    finalPassScoreEl.innerText = this.player.passedValue;
-    this.updateBestScore()
-    endCard.classList.remove(CLASS_HIDDEN);
+  generateObstacles() {
+    const obstacles = [];
+
+    for (let i = 0; i < OBSTACLES_QTY; i++) {
+      obstacles.push(new Obstacle(i * OBSTACLES_X_OFFSET));
+    }
+
+    return obstacles;
   }
 
   updateBestScore() {
-    if (this.player.distanceTravelled <= this.prevBestScore) return;
+    if (this.player.score <= this.prevBestScore) return;
 
-    localStorage.setItem(BEST_SCORE_KEY, this.player.distanceTravelled);
-    this.prevBestScore = this.player.distanceTravelled;
+    this.prevBestScore = this.player.score;
+    localStorage.setItem(BEST_SCORE_KEY, this.player.score);
     newBestEl.classList.remove(CLASS_HIDDEN);
-    this.updateBestScoreElements();
+  }
+
+  handleGameOver() {
+    finalScoreEl.innerText = this.player.score;
+    this.updateBestScore()
+    bestScoreEl.innerText = this.prevBestScore;
+    endCard.classList.remove(CLASS_HIDDEN);
+  }
+
+  handleObstacleMovement() {
+    this.obstacles.forEach((obstacle) => {
+      if (!obstacle.hasPassedPlayer && obstacle.hasHitPlayer(this.player)) {
+        this.killPlayer();
+      }
+      obstacle.moveX();
+      obstacle.checkOutOfScreen();
+    });
+  }
+
+  handlePlayerMovementAndAnimation() {
+    this.player.changeSprite();
+    this.player.handleVerticalMovement();
+    this.player.hasVerticallyCollided() && this.killPlayer();
+  }
+
+  killPlayer() {
+    this.isDead = true;
   }
 
   animateMotion() {
     (function animate() {
       this.player.updateScores();
-      this.player.increaseSpeed();
 
-      [...this.enemies, ...this.roadLines].forEach((obj) => {
-        obj.moveY();
-        obj.updateSpeed(PLAYER_SPEED);
-        checkBelowScreen(obj, this.player);
-      });
+      this.handlePlayerMovementAndAnimation();
+      this.handleObstacleMovement();
 
-      this.isCollisionFree() ? requestAnimationFrame(animate.bind(this)) : this.handleGameOver();
+      this.isDead ? this.handleGameOver() : requestAnimationFrame(animate.bind(this));
     }.bind(this))();
-  }
-
-  isCollisionFree() {
-    /**
-     *
-     * @TODO find cleaner alternative
-     *
-     * */
-    return this.enemies.some((enemy) => {
-      return (enemy.lane === this.player.lane) &&
-      ((this.player.y > enemy.y) && (enemy.height < (this.player.y - enemy.y))) ||
-        ((this.player.y < enemy.y) && (this.player.height < (enemy.y - this.player.y)));
-    });
   }
 }
 
 
 // ------------------------- functions ---------------------------
 
+
+function getObstacleElement() {
+  const parentEl = createNewElement(DIV_TAG, [CLASS_OBSTACLE]);
+  const contentEl = createNewElement(DIV_TAG, [CLASS_OBSTACLE_CONTENT]);
+
+  const topObstacleEl = topObstacleImg.cloneNode();
+  const botObstacleEl = botObstacleImg.cloneNode();
+
+  contentEl.append(topObstacleEl, botObstacleEl);
+  parentEl.appendChild(contentEl);
+
+  return {parentEl, topObstacleEl, botObstacleEl};
+}
 
 function loadImage(src) {
   return new Promise(resolve => {
@@ -323,15 +347,10 @@ function loadImage(src) {
 }
 
 function reset() {
-  PLAYER_SPEED = getPlayerSpeed();
   startCard.classList.add(CLASS_HIDDEN);
   endCard.classList.add(CLASS_HIDDEN);
   newBestEl.classList.add(CLASS_HIDDEN);
-  roadArea.textContent = '';
-}
-
-function convertLaneToPixel(lane) {
-  return lane * (MAX_WIDTH / 3) + 30;
+  gameArea.textContent = '';
 }
 
 function addPx(val) {
@@ -356,74 +375,38 @@ function getRandomInteger(min, max) {
   return Math.floor(Math.random() * (max - min) + min);
 }
 
-function getRandomLane() {
-  return getRandomInteger(0, LANES_QTY);
-}
+function loadPlayerSprites() {
+  let playerImgs = [];
 
-function generateEnemies() {
-  let enemies = [];
-
-  for (let i = 0; i < ENEMY_QTY; i++) {
-    enemies.push(new Enemy(i % LANES_QTY, enemyImgs[i]));
+  for (let i = 1; i <= PLAYER_SPRITES_NUM; i++ ) {
+    playerImgs.push(loadImage(PLAYER_IMG + i + PNG_EXT));
   }
 
-  return enemies;
-}
-
-function generateRoadLines() {
-  let roadLines = [];
-
-  for (let i = 0 ; i < ROAD_LINES_QTY + 1; i++) {
-    /**
-     * @TODO find alternative to make road lines consistent
-     * */
-    const lineHeight = MAX_HEIGHT / ROAD_LINES_QTY;
-    const verticalOffset = i * lineHeight;
-    roadLines.push(new RoadLine(verticalOffset, lineHeight - 70));
-  }
-
-  return roadLines;
-}
-
-async function loadEnemyImages() {
-  const enemyImgs = [];
-
-  for (let i = 0; i < ENEMY_QTY; i++) {
-    enemyImgs.push(loadImage(ENEMY_IMG));
-  }
-
-  return Promise.all(enemyImgs);
-}
-
-function checkBelowScreen(obj, player) {
-  if (obj.y > MAX_HEIGHT) {
-    if (obj instanceof Enemy) player.incresePassedValue();
-    obj.restartToTop();
-  }
-}
-
-function getPlayerSpeed() {
-  return Math.floor(ENEMY_SPEED * 2);
+  return playerImgs;
 }
 
 function init() {
-  const game = new Game();
+  new Game();
 }
 
 
 // --------------------- logic --------------------------------
 
 
-roadArea.style.width = addPx(MAX_WIDTH);
-roadArea.style.height = addPx(MAX_HEIGHT);
+gameArea.style.width = addPx(MAX_WIDTH);
+gameArea.style.height = addPx(MAX_HEIGHT);
 
-let playerImg, enemyImgs, bulletImg;
-let PLAYER_SPEED = getPlayerSpeed();
+let playerImgs, topObstacleImg, botObstacleImg;
+
+
 
 (async function () {
-  playerImg = await loadImage(PLAYER_IMG);
-  enemyImgs = await loadEnemyImages();
-  bulletImg = await loadImage(BULLET_IMG)
+  topObstacleImg = await loadImage(TOP_OBSTACLE_IMG);
+  botObstacleImg = await loadImage(BOT_OBSTACLE_IMG);
+  playerImgs = await Promise.all(loadPlayerSprites());
+
+  topObstacleImg.classList.add(CLASS_OBSTACLE_PART, CLASS_TOP_OBSTACLE);
+  botObstacleImg.classList.add(CLASS_OBSTACLE_PART, CLASS_BOT_OBSTACLE);
 
   startBtn.addEventListener('click', () => {
     scoreCard.classList.remove(CLASS_HIDDEN);
