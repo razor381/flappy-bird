@@ -4,6 +4,7 @@ const CLASS_ABSOLUTE = 'absolute';
 const CLASS_HIDDEN = 'hidden';
 const CLASS_OBSTACLE = 'obstacle';
 const CLASS_OBSTACLE_CONTENT = 'obstacle-content';
+const CLASS_OBSTACLE_PART = 'obstacle-part';
 const CLASS_TOP_OBSTACLE = 'top-obstacle';
 const CLASS_BOT_OBSTACLE = 'bot-obstacle';
 
@@ -14,12 +15,9 @@ const ARROW_UP = 'ArrowUp';
 const ARROW_DOWN = 'ArrowDown';
 const BEST_SCORE_KEY = '@BEST_SCORE_KEY';
 
-const PLAYER_IMG = '/assets/img/player.png';
-const PLAYER_IMGS = [
-  '/assets/img/bird1.png',
-  '/assets/img/bird2.png',
-  '/assets/img/bird3.png',
-];
+const PLAYER_IMG = '/assets/img/bird';
+const PLAYER_SPRITES_NUM = 9;
+const PNG_EXT = '.png';
 const TOP_OBSTACLE_IMG = '/assets/img/pipe-top.png';
 const BOT_OBSTACLE_IMG = '/assets/img/pipe-bot.png';
 
@@ -31,15 +29,18 @@ const PLAYER_INITIAL_Y = (MAX_HEIGHT / 2) - PLAYER_HEIGHT;
 const OBSTACLE_WIDTH = 130;
 const OBSTACLES_X_OFFSET = 450;
 const OBSTACLES_QTY = 2;
-const OBSTACLE_GAP_HEIGHT = PLAYER_HEIGHT * 4;
+const OBSTACLE_GAP_HEIGHT = PLAYER_HEIGHT * 5.5;
 const GAP_Y_INDEX = 1 / 6;
 const MIN_GAP_Y = MAX_HEIGHT * GAP_Y_INDEX;
 const MAX_GAP_Y = MAX_HEIGHT * (1 - GAP_Y_INDEX) - OBSTACLE_GAP_HEIGHT;
 
 const PLAYER_ANIMATE_SPEED = 5; // lower value results in faster flapping of wings
-const GAME_SPEED_DX = -4;
-const GRAVITY_DY = 5;
-const JUMP_DY = -20;
+const GAME_SPEED_DX = -4; // higher negative val makes obstacles move faster
+const DEFAULT_DY = 0.03;  // default fall rate
+const GRAVITY_INCREMENT = 1;  // default fall acceleration
+const JUMP_GRAVITY_INCREMENT = 8;  // negative acceleration during fall
+const JUMP_DY = -60;  // fall rate during jump
+const JUMP_STOP_FRAMES = 10;  // higher value increases hold time at top of jump
 
 
 // DOM ELEMENTS
@@ -111,13 +112,16 @@ class Player extends Base {
       width: PLAYER_WIDTH,
       height: PLAYER_HEIGHT,
       dx: 0,
-      dy: GRAVITY_DY,
+      dy: DEFAULT_DY,
       el: playerImgs[0],
     });
 
+    this.isJumping = false;
     this.imageEls = playerImgs;
     this.spriteIndex = 0;
     this.spriteChangeRecorder = 0;
+    this.atJumpTopFrame = 0;
+    this.isAtJumpTop = false;
     this.score = 0;
     this.addMovementListeners();
   }
@@ -127,41 +131,19 @@ class Player extends Base {
   }
 
   jump() {
+    this.isJumping = true;
+    this.isAtJumpTop = false;
     this.dy = JUMP_DY;
-    setTimeout(() => this.dy = GRAVITY_DY, 80);
-  }
-
-  // for development purposes
-  goUp() {
-    this.y -= 50;
-  }
-
-  // for development purposes
-  goDown() {
-    this.y += 50;
   }
 
   addMovementListeners() {
     document.onmousedown = (e) => this.jump();
 
-    // for development purposes
-    document.addEventListener('keydown', (e) => {
-      switch(e.key) {
-        case ARROW_UP:
-          this.goUp();
-          break;
-        case ARROW_DOWN:
-          this.goDown();
-          break;
-        default:
-      }
-    });
-
   }
 
   hasVerticallyCollided() {
     if (this.y + this.height >= MAX_HEIGHT) return true;
-    if (this.y <= 0) this.dy = GRAVITY_DY;
+    if (this.y <= 0) this.dy = DEFAULT_DY;
 
     return false;
   }
@@ -176,6 +158,25 @@ class Player extends Base {
       this.updateStyles();
       parentEl.appendChild(this.el);
     }
+  }
+
+  handleVerticalMovement() {
+    // top most point of jump reached
+    if (this.isJumping && this.dy >= 0) {
+      this.isAtJumpTop = true;
+    }
+
+    // hold position at top-most point of jump for a while
+    if (this.isAtJumpTop && (++this.atJumpTopFrame % JUMP_STOP_FRAMES == 0)) {
+      this.atJumpTopFrame = 0;
+      this.isAtJumpTop = false;
+      this.isJumping = false;
+    }
+
+    this.dy += this.isAtJumpTop ? 0
+      : this.isJumping ? JUMP_GRAVITY_INCREMENT : GRAVITY_INCREMENT
+
+    this.moveY();
   }
 }
 
@@ -303,7 +304,7 @@ class Game {
 
   handlePlayerMovementAndAnimation() {
     this.player.changeSprite();
-    this.player.moveY();
+    this.player.handleVerticalMovement();
     this.player.hasVerticallyCollided() && this.killPlayer();
   }
 
@@ -378,7 +379,13 @@ function getRandomInteger(min, max) {
 }
 
 function loadPlayerSprites() {
-  return PLAYER_IMGS.map(loadImage);
+  let playerImgs = [];
+
+  for (let i = 1; i <= PLAYER_SPRITES_NUM; i++ ) {
+    playerImgs.push(loadImage(PLAYER_IMG + i + PNG_EXT));
+  }
+
+  return playerImgs;
 }
 
 function init() {
@@ -392,18 +399,17 @@ function init() {
 gameArea.style.width = addPx(MAX_WIDTH);
 gameArea.style.height = addPx(MAX_HEIGHT);
 
-let playerImg, playerImgs, topObstacleImg, botObstacleImg;
+let playerImgs, topObstacleImg, botObstacleImg;
 
 
 
 (async function () {
-  playerImg = await loadImage(PLAYER_IMG);
   topObstacleImg = await loadImage(TOP_OBSTACLE_IMG);
   botObstacleImg = await loadImage(BOT_OBSTACLE_IMG);
   playerImgs = await Promise.all(loadPlayerSprites());
 
-  topObstacleImg.classList.add(CLASS_TOP_OBSTACLE);
-  botObstacleImg.classList.add(CLASS_BOT_OBSTACLE);
+  topObstacleImg.classList.add(CLASS_OBSTACLE_PART, CLASS_TOP_OBSTACLE);
+  botObstacleImg.classList.add(CLASS_OBSTACLE_PART, CLASS_BOT_OBSTACLE);
 
   startBtn.addEventListener('click', () => {
     scoreCard.classList.remove(CLASS_HIDDEN);
