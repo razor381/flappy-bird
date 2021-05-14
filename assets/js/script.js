@@ -15,6 +15,11 @@ const ARROW_DOWN = 'ArrowDown';
 const BEST_SCORE_KEY = '@BEST_SCORE_KEY';
 
 const PLAYER_IMG = '/assets/img/player.png';
+const PLAYER_IMGS = [
+  '/assets/img/bird1.png',
+  '/assets/img/bird2.png',
+  '/assets/img/bird3.png',
+];
 const TOP_OBSTACLE_IMG = '/assets/img/pipe-top.png';
 const BOT_OBSTACLE_IMG = '/assets/img/pipe-bot.png';
 
@@ -31,9 +36,9 @@ const GAP_Y_INDEX = 1 / 6;
 const MIN_GAP_Y = MAX_HEIGHT * GAP_Y_INDEX;
 const MAX_GAP_Y = MAX_HEIGHT * (1 - GAP_Y_INDEX) - OBSTACLE_GAP_HEIGHT;
 
+const PLAYER_ANIMATE_SPEED = 5; // lower value results in faster flapping of wings
 const GAME_SPEED_DX = -4;
 const GRAVITY_DY = 5;
-// const GRAVITY_DY = 0;
 const JUMP_DY = -20;
 
 
@@ -107,11 +112,18 @@ class Player extends Base {
       height: PLAYER_HEIGHT,
       dx: 0,
       dy: GRAVITY_DY,
-      el: playerImg,
+      el: playerImgs[0],
     });
 
+    this.imageEls = playerImgs;
+    this.spriteIndex = 0;
+    this.spriteChangeRecorder = 0;
     this.score = 0;
     this.addMovementListeners();
+  }
+
+  updateScores() {
+    currentScoreEl.innerText = this.score;
   }
 
   jump() {
@@ -152,6 +164,18 @@ class Player extends Base {
     if (this.y <= 0) this.dy = GRAVITY_DY;
 
     return false;
+  }
+
+  changeSprite() {
+    if (++this.spriteChangeRecorder % PLAYER_ANIMATE_SPEED === 0) {
+      const spritesNum = this.imageEls.length;
+      const parentEl = this.el.parentNode;
+
+      parentEl.removeChild(this.el);
+      this.el = this.imageEls[(++this.spriteIndex) % spritesNum];
+      this.updateStyles();
+      parentEl.appendChild(this.el);
+    }
   }
 }
 
@@ -277,7 +301,8 @@ class Game {
     });
   }
 
-  handlePlayerMovement() {
+  handlePlayerMovementAndAnimation() {
+    this.player.changeSprite();
     this.player.moveY();
     this.player.hasVerticallyCollided() && this.killPlayer();
   }
@@ -288,9 +313,9 @@ class Game {
 
   animateMotion() {
     (function animate() {
-      // this.player.updateScores();
+      this.player.updateScores();
 
-      this.handlePlayerMovement();
+      this.handlePlayerMovementAndAnimation();
       this.handleObstacleMovement();
 
       this.isDead ? this.handleGameOver() : requestAnimationFrame(animate.bind(this));
@@ -352,6 +377,10 @@ function getRandomInteger(min, max) {
   return Math.floor(Math.random() * (max - min) + min);
 }
 
+function loadPlayerSprites() {
+  return PLAYER_IMGS.map(loadImage);
+}
+
 function init() {
   const game = new Game();
 }
@@ -363,18 +392,21 @@ function init() {
 gameArea.style.width = addPx(MAX_WIDTH);
 gameArea.style.height = addPx(MAX_HEIGHT);
 
-let playerImg, topObstacleImg, botObstacleImg;
+let playerImg, playerImgs, topObstacleImg, botObstacleImg;
+
+
 
 (async function () {
   playerImg = await loadImage(PLAYER_IMG);
   topObstacleImg = await loadImage(TOP_OBSTACLE_IMG);
   botObstacleImg = await loadImage(BOT_OBSTACLE_IMG);
+  playerImgs = await Promise.all(loadPlayerSprites());
 
   topObstacleImg.classList.add(CLASS_TOP_OBSTACLE);
   botObstacleImg.classList.add(CLASS_BOT_OBSTACLE);
 
   startBtn.addEventListener('click', () => {
-    // scoreCard.classList.remove(CLASS_HIDDEN);
+    scoreCard.classList.remove(CLASS_HIDDEN);
     init();
   });
 
