@@ -99,6 +99,17 @@ body {
   font-weight: 'bold';
 }
 
+.live-score {
+  position: absolute;
+  z-index: 30;
+  top: 20%;
+  left: 50%;
+  font-size: 7em;
+  color: white;
+  font-weight: bold;
+  text-shadow: -2px -2px 0 #000, 2px -2px 0 #000, -2px 2px 0 #000, 2px 2px 0 #000;
+}
+
 .absolute {
   position: absolute;
 }
