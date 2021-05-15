@@ -255,9 +255,10 @@ class Game {
     reset();
     this.player = new Player();
     this.obstacles = this.generateObstacles();
-    this.animateMotion();
     this.isDead = false;
     this.prevBestScore = this.getPrevBestScore();
+
+    this.animateMotion();
   }
 
   getPrevBestScore() {
