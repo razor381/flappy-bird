@@ -400,11 +400,19 @@ gameArea.style.height = addPx(MAX_HEIGHT);
 let playerImgs, topObstacleImg, botObstacleImg;
 
 function loadAssets() {
-  return [loadImage(TOP_OBSTACLE_IMG), loadImage(BOT_OBSTACLE_IMG), ...loadPlayerSprites()];
+  return [
+    loadImage(TOP_OBSTACLE_IMG),
+    loadImage(BOT_OBSTACLE_IMG),
+    ...loadPlayerSprites()
+  ];
 }
 
 (async function () {
-  [topObstacleImg, botObstacleImg, ...playerImgs] = await Promise.all(loadAssets());
+  [
+    topObstacleImg,
+    botObstacleImg,
+    ...playerImgs
+  ] = await Promise.all(loadAssets());
 
   topObstacleImg.classList.add(CLASS_OBSTACLE_PART, CLASS_TOP_OBSTACLE);
   botObstacleImg.classList.add(CLASS_OBSTACLE_PART, CLASS_BOT_OBSTACLE);
